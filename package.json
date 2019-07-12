@@ -1,0 +1,28 @@
+{
+  "name": "notfis31",
+  "version": "0.1.0",
+  "description": "Formata e valida campos no formato NOTFIS 3.1 padrão PROCEDA",
+  "main": "notfis.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/freebeans/notfis31.js.git"
+  },
+  "keywords": [
+    "notfis",
+    "proceda",
+    "frete",
+    "transportadora",
+    "nodejs",
+    "javascript",
+    "js"
+  ],
+  "author": "bean",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/freebeans/notfis31.js/issues"
+  },
+  "homepage": "https://github.com/freebeans/notfis31.js#readme"
+}
