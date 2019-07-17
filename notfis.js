@@ -1,16 +1,16 @@
 module.exports = {
-  mkCabecalhoIntercambio: mkCabecalhoIntercambio,
-  mkCabecalhoDocumento:   mkCabecalhoDocumento,
-  mkDadosEmbarcadora:     mkDadosEmbarcadora,
-  mkDadosDestinatario:    mkDadosDestinatario
+  mkCabecalhoIntercambio:   mkCabecalhoIntercambio,
+  mkCabecalhoDocumento:     mkCabecalhoDocumento,
+  mkDadosEmbarcadora:       mkDadosEmbarcadora,
+  mkDadosDestinatario:      mkDadosDestinatario,
+  mkNotaFiscal:             mkNotaFiscal,
+  mkValoresTotaisDocumento: mkValoresTotaisDocumento
 };
 
 /* Enumerações */
 const N = 1;
 const A = 2;
 
-
-/* Funções auxiliares */
 
 /**
  * formataCampo - ajusta um número ou string de acordo com o formato especificado
@@ -90,9 +90,6 @@ function formataCampo(data) {
   retval.erro = `Erro de argumento: tipo do campo inválido. ${JSON.stringify(data)}`;
   return retval;
 }
-
-
-/* Funções principais - formatadores de registros */
 
 /**
  * mkCabecalhoIntercambio - cria CABEÇALHO DE INTERCÂMBIO - NOTFIS 3.1
@@ -181,7 +178,7 @@ function mkCabecalhoIntercambio(data) {
   // Concatena erros e valores para formar a linha
   campos.forEach(campo => {
     if (campo.erro) {
-      retval.erro = retval.erro ? retval.erro + campo.erro : campo.erro;
+      retval.erro = retval.erro ? retval.erro + '\n' + campo.erro : campo.erro;
     }
     retval.valor += campo.valor;
   })
@@ -244,7 +241,7 @@ function mkCabecalhoDocumento(data) {
   // Concatena erros e valores para formar a linha
   campos.forEach(campo => {
     if (campo.erro) {
-      retval.erro = retval.erro ? retval.erro + campo.erro : campo.erro;
+      retval.erro = retval.erro ? retval.erro + '\n' + campo.erro : campo.erro;
     }
     retval.valor += campo.valor;
   })
@@ -378,7 +375,7 @@ function mkDadosEmbarcadora(data) {
   // Concatena erros e valores para formar a linha
   campos.forEach(campo => {
     if (campo.erro) {
-      retval.erro = retval.erro ? retval.erro + campo.erro : campo.erro;
+      retval.erro = retval.erro ? retval.erro + '\n' + campo.erro : campo.erro;
     }
     retval.valor += campo.valor;
   })
@@ -552,7 +549,7 @@ function mkDadosDestinatario(data) {
   // Concatena erros e valores para formar a linha
   campos.forEach(campo => {
     if (campo.erro) {
-      retval.erro = retval.erro ? retval.erro + campo.erro : campo.erro;
+      retval.erro = retval.erro ? retval.erro + '\n' + campo.erro : campo.erro;
     }
     retval.valor += campo.valor;
   })
@@ -565,11 +562,476 @@ function mkDadosDestinatario(data) {
   return retval;
 }
 
+/**
+ * mkNotaFiscal - cria DADOS DE NOTA FISCAL - NOTFIS 3.1
+ *
+ * @param  {Object}  data                     Dados para construir a linha
+ * @param  {string}  data.romaneio            Identificação interna da embarcadora
+ * @param  {string}  data.codigo_rota         Tabela acordada entre embarcadora e transportadora
+ * @param  {number}  data.meio_de_transporte  1=RODOVIÁRIO 2=AÉREO 3=MARÍTIMO 4=FLUVIAL 5=FERROVIÁRIO
+ * @param  {number}  data.tipo_de_transporte  1=CARGA FECHADA, 2=CARGA FRACIONADA
+ * @param  {number}  data.tipo_de_carga       1=FRIA 2=SECA 3=MISTA
+ * @param  {string}  data.condicao_de_frete   C=CIF F=FOB
+ * @param  {string}  data.serie_nf            Série da NF
+ * @param  {number}  data.numero_nf           Número da NF
+ * @param  {number}  data.data_emissao        Formato DDMMAAAA
+ * @param  {string}  data.natureza            Ex: CALÇADOS, CONFECÇÕES, ABRASIVOS, ETC.
+ * @param  {string}  data.acondicionamento    Ex: FARDOS, AMARRADOS, CAIXAS, ETC.
+ * @param  {number}  data.qtd_volumes         Quantidade de volumes
+ * @param  {number}  data.valor_nota          Valor total da nota
+ * @param  {number}  data.peso_total          Peso total da mercadoria a transportar
+ * @param  {number}  data.peso_densidade_cubagem
+ * @param  {string}  data.tipo_icms           Tipo de ICMS. D=Diferido, R=Reduzido, P=Presumido, T=Substituição, S=Alíquota normal, N=Não incidente/Isento
+ * @param  {string}  data.seguro              Seguro já efetuado? S=Sim N=Não
+ * @param  {number}  data.valor_seguro        Valor do seguro
+ * @param  {number}  data.valor_a_ser_cobrado
+ * @param  {string}  data.placa               Número da placa do caminhão/carreta
+ * @param  {string}  data.plano_carga_rapida  S=Sim N=Não
+ * @param  {number}  data.valor_frete_peso_volume
+ * @param  {number}  data.valor_ad_valorem
+ * @param  {number}  data.valor_total_taxas   Soma dos valores das taxas envolvidas no transporte (taxas redespacho/reentrega, pedágios, etc.)
+ * @param  {number}  data.valor_total_frete   Somatório dos campos de valores: frete peso-volume, ad valorem e total taxas
+ * @param  {string}  data.acao_do_documento   I=Inclusão E=Exclusão/Cancelamento
+ * @param  {number}  data.valor_icms          Valor do ICMS da nota
+ * @param  {number}  data.valor_icms_retido   Valor do ICMS retido
+ * @param  {string}  data.indicacao_de_bonificacao  S=SIM: nota com bonificação, N=NÂO: sem bonificação
+ * @param  {string}  data.chave_cte           Preencher com o número da chave do CTE emitido pela SEFAZ
+ *
+ * @return {Object}  Objeto contendo ".valor" {string} e ".erro" {string ou null}.
+ */
+function mkNotaFiscal(data) {
+  // Retorno da função
+  let retval = {
+    erro: null, // {string | null}
+    valor: ''   // {string}
+  };
 
+  // Verifica existência dos campos obrigatórios
+  if (
+    data.placa      === undefined ||
+    data.seguro     === undefined ||
+    data.romaneio   === undefined ||
+    data.natureza   === undefined ||
+    data.serie_nf   === undefined ||
+    data.tipo_icms  === undefined ||
+    data.chave_cte  === undefined ||
+    data.numero_nf  === undefined ||
+    data.valor_nota === undefined ||
+    data.peso_total === undefined ||
+    data.valor_icms === undefined ||
+    data.qtd_volumes  === undefined ||
+    data.codigo_rota  === undefined ||
+    data.valor_seguro === undefined ||
+    data.data_emissao === undefined ||
+    data.tipo_de_carga  === undefined ||
+    data.valor_ad_valorem === undefined ||
+    data.acondicionamento === undefined ||
+    data.condicao_de_frete  === undefined ||
+    data.valor_total_taxas  === undefined ||
+    data.valor_icms_retido  === undefined ||
+    data.valor_total_frete  === undefined ||
+    data.acao_do_documento  === undefined ||
+    data.meio_de_transporte === undefined ||
+    data.tipo_de_transporte === undefined ||
+    data.plano_carga_rapida === undefined ||
+    data.valor_a_ser_cobrado      === undefined ||
+    data.peso_densidade_cubagem   === undefined ||
+    data.valor_frete_peso_volume  === undefined ||
+    data.indicacao_de_bonificacao === undefined
+  ) {
+    retval.erro = `Erro de argumento (mkNotaFiscal): todos os dados da linha devem ser informados. ${JSON.stringify(data)}`;
+    return retval;
+  }
 
-// NOTFIS 3.1
-// 000 Cabeçalho intercâmbio x1     =====================
-// 310 Cabeçalho documento x200     =====================
-// 311 Dados embarcadora x10/310    =====================
-// 312 Dados destinatário x500/311  =====================
-// 313 Dados NF x40/312
+  var campos = [
+    formataCampo({
+      campo: 'IDENTIFICADOR DE REGISTRO'
+      , valor: '313'
+      , tipo: N
+      , tamanho: 3
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'NUM. ROMANEIO/COLETA.RESUMO DE CARGA'
+      , valor: data.romaneio
+      , tipo: A
+      , tamanho: 15
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'CÓDIGO DA ROTA'
+      , valor: data.codigo_rota
+      , tipo: A
+      , tamanho: 7
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'MEIO DE TRANSPORTE'
+      , valor: data.meio_de_transporte
+      , tipo: N
+      , tamanho: 1
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'TIPO DO TRANSPORTE DA CARGA'
+      , valor: data.tipo_de_transporte
+      , tipo: N
+      , tamanho: 1
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'TIPO DE CARGA'
+      , valor: data.tipo_de_carga
+      , tipo: N
+      , tamanho: 1
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'CONDIÇÃO DE FRETE'
+      , valor: data.condicao_de_frete
+      , tipo: A
+      , tamanho: 1
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'SÉRIE DA NOTA FISCAL'
+      , valor: data.serie_nf
+      , tipo: A
+      , tamanho: 3
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'NÚMERO DA NOTA FISCAL'
+      , valor: data.numero_nf
+      , tipo: N
+      , tamanho: 8
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'DATA DE EMISSÃO'
+      , valor: data.data_emissao
+      , tipo: N
+      , tamanho: 8
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'NATUREZA DA MERCADORIA'
+      , valor: data.natureza
+      , tipo: A
+      , tamanho: 15
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'ESPÉCIE DE ACONDICIONAMENTO'
+      , valor: data.acondicionamento
+      , tipo: A
+      , tamanho: 15
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'QTDE DE VOLUMES'
+      , valor: data.qtd_volumes
+      , tipo: N
+      , tamanho: 7 // Total, não apenas antes da virgula (N 5,2)
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'VALOR TOTAL DA NOTA'
+      , valor: data.valor_nota
+      , tipo: N
+      , tamanho: 15 // Total, não apenas antes da virgula (N 13,2)
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'PESO TOTAL DA MERCADORIA'
+      , valor: data.peso_total
+      , tipo: N
+      , tamanho: 7 // Total, não apenas antes da virgula (N 5,2)
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'PESO DENSIDADE/CUBAGEM'
+      , valor: data.peso_densidade_cubagem
+      , tipo: N
+      , tamanho: 5 // Total, não apenas antes da virgula (N 3,2)
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'TIPO DE ICMS'
+      , valor: data.tipo_icms
+      , tipo: A
+      , tamanho: 1
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'SEGURO JÁ EFETUADO'
+      , valor: data.seguro
+      , tipo: A
+      , tamanho: 1
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'VALOR DO SEGURO'
+      , valor: data.valor_seguro
+      , tipo: N
+      , tamanho: 15 // N 13,2
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'VALOR A SER COBRADO'
+      , valor: data.valor_a_ser_cobrado
+      , tipo: N
+      , tamanho: 15 // N 13,2
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'PLACA DO CAMINHÃO/CARRETA'
+      , valor: data.placa
+      , tipo: A
+      , tamanho: 7
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'PLANO DE CARGA RÁPIDA'
+      , valor: data.plano_carga_rapida
+      , tipo: A
+      , tamanho: 1
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'VALOR DO FRETE PESO-VOLUME'
+      , valor: data.valor_frete_peso_volume
+      , tipo: N
+      , tamanho: 15 // N 13,2
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'VALOR AD VALOREM'
+      , valor: data.valor_ad_valorem
+      , tipo: N
+      , tamanho: 15 // N 13,2
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'VALOR TOTAL DAS TAXAS'
+      , valor: data.valor_total_taxas
+      , tipo: N
+      , tamanho: 15 // N 13,2
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'VALOR TOTAL DO FRETE'
+      , valor: data.valor_total_frete
+      , tipo: N
+      , tamanho: 15 // N 13,2
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'AÇÃO DO DOCUMENTO'
+      , valor: data.acao_do_documento
+      , tipo: A
+      , tamanho: 1
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'VALOR DO ICMS'
+      , valor: data.valor_icms
+      , tipo: N
+      , tamanho: 12 // N 10,2
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'VALOR DO ICMS RETIDO'
+      , valor: data.valor_icms_retido
+      , tipo: N
+      , tamanho: 12 // N 10,2
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'INDICAÇÃO DE BONIFICAÇÃO'
+      , valor: data.indicacao_de_bonificacao
+      , tipo: A
+      , tamanho: 1
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'CHAVE CTE'
+      , valor: data.chave_cte
+      , tipo: A
+      , tamanho: 44
+      , decimal: 0
+    })
+  ];
+
+  if (data.cfop != undefined) {
+    campos.push(
+      formataCampo({
+        campo: 'CFOP',
+        valor: data.cfop,
+        tipo: A,
+        tamanho: 4,
+        decimal: 0
+      })
+    )
+  }
+
+  // Concatena erros e valores para formar a linha
+  campos.forEach(campo => {
+    if (campo.erro) {
+      retval.erro = retval.erro ? retval.erro + '\n' + campo.erro : campo.erro;
+    }
+    retval.valor += campo.valor;
+  })
+
+  // Apaga o retorno se houver um erro. Não se deve utilizá-lo neste caso.
+  if (retval.erro) {
+    retval.valor = '';
+  }
+
+  return retval;
+}
+
+/**
+ * mkValoresTotaisDocumento - cria VALORES TOTAIS DO DOCUMENTO - NOTFIS 3.1
+ *
+ * @param  {Object}  data                   Dados para construir a linha
+ * @param  {number}  data.total_seguro      Somatório dos campos do registro 313
+ * @param  {number}  data.peso_total_nf     Somatório dos campos do registro 313
+ * @param  {number}  data.valor_total_nf    Somatório dos campos do registro 313
+ * @param  {number}  data.qtd_total_volumes             Somatório dos campos 313
+ * @param  {number}  data.total_a_ser_cobrado           Somatório dos campos 313
+ * @param  {number}  data.peso_total_densidade_cubagem  Somatório dos campos 313
+ *
+ * @return {Object}  Objeto contendo ".valor" {string} e ".erro" {string ou null}.
+ */
+function mkValoresTotaisDocumento(data) {
+  // Retorno da função
+  let retval = {
+    erro: null, // {string | null}
+    valor: ''   // {string}
+  };
+
+  // Verifica existência dos campos obrigatórios
+  if (
+    data.total_seguro   === undefined ||
+    data.peso_total_nf  === undefined ||
+    data.valor_total_nf === undefined ||
+    data.qtd_total_volumes    === undefined ||
+    data.total_a_ser_cobrado  === undefined ||
+    data.peso_total_densidade_cubagem === undefined
+  ) {
+    retval.erro = `Erro de argumento (mkValoresTotaisDocumento): todos os dados da linha devem ser informados. ${JSON.stringify(data)}`;
+    return retval;
+  }
+
+  var campos = [
+    formataCampo({
+      campo: 'IDENTIFICADOR DE REGISTRO'
+      , valor: '318'
+      , tipo: N
+      , tamanho: 3
+      , decimal: 0
+    }),
+
+    formataCampo({
+      campo: 'VALOR TOTAL DAS NOTAS FISCAIS'
+      , valor: data.valor_total_nf
+      , tipo: N
+      , tamanho: 15 // N 13,2
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'PESO TOTAL DAS NOTAS FISCAIS'
+      , valor: data.peso_total_nf
+      , tipo: N
+      , tamanho: 15 // N 13,2
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'PESO TOTAL DENSIDADE/CUBAGEM'
+      , valor: data.peso_total_densidade_cubagem
+      , tipo: N
+      , tamanho: 15 // N 13,2
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'QUANTIDADE TOTAL DE VOLUMES'
+      , valor: data.qtd_total_volumes
+      , tipo: N
+      , tamanho: 15 // N 13,2
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'VALOR TOTAL A SER COBRADO'
+      , valor: data.total_a_ser_cobrado
+      , tipo: N
+      , tamanho: 15 // N 13,2
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'VALOR TOTAL DO SEGURO'
+      , valor: data.total_seguro
+      , tipo: N
+      , tamanho: 15 // N 13,2
+      , decimal: 2
+    }),
+
+    formataCampo({
+      campo: 'FILLER'
+      , valor: ''
+      , tipo: A
+      , tamanho: 147
+      , decimal: 0
+    })
+  ];
+
+  // Concatena erros e valores para formar a linha
+  campos.forEach(campo => {
+    if (campo.erro) {
+      retval.erro = retval.erro ? retval.erro + '\n' + campo.erro : campo.erro;
+    }
+    retval.valor += campo.valor;
+  })
+
+  // Apaga o retorno se houver um erro. Não se deve utilizá-lo neste caso.
+  if (retval.erro) {
+    retval.valor = '';
+  }
+
+  return retval;
+}

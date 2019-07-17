@@ -19,6 +19,9 @@
     "javascript",
     "js"
   ],
+  "files": [
+    "notfis.js"
+  ],
   "author": "bean",
   "license": "MIT",
   "bugs": {
